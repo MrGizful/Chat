@@ -22,8 +22,6 @@ void ChatServer::incomingConnection(qintptr socketDescriptor)
     connect(m_socket, SIGNAL(disconnected()), this, SLOT(deleteLater()));
 
     qDebug() << socketDescriptor << " succesfully connected";
-
-    m_socket->write("Connected succesfully!");
 }
 
 void ChatServer::socketReadReady()
