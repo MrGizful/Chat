@@ -6,8 +6,10 @@ class ChatServer : public QTcpServer
 {
     Q_OBJECT
 private:
-    QTcpSocket* m_socket;
-    QByteArray data;
+    QList<QTcpSocket*> m_clients;
+    quint16 m_nextBlockSize;
+
+    void sendToClients(QByteArray data);
 
 public:
     ChatServer();
@@ -15,5 +17,6 @@ public:
 public slots:
     void startServer();
     void incomingConnection(qintptr socketDescriptor);
-    void socketReadReady();
+    void deleteSocket();
+    void readClient();
 };

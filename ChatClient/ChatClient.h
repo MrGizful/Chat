@@ -11,8 +11,7 @@ private:
     QTcpSocket* m_socket;
     QTextEdit* m_messages;
     QLineEdit* m_message;
-
-    QByteArray data;
+    quint16 m_nextBlockSize;
 
 public:
     ChatClient(const QString& host = "localhost", int port = 2323, QWidget *parent = nullptr);
@@ -22,4 +21,5 @@ public slots:
     void socketConnected();
     void socketDisconnected();
     void socketError(QAbstractSocket::SocketError error);
+    void sendToServer();
 };
