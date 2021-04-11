@@ -1,7 +1,8 @@
 #pragma once
 #include <QtWidgets>
 #include <QTcpSocket>
-#include <QMessageBox>
+#include "StartDialog.h"
+#include "Commands.h"
 
 class ChatClient : public QWidget
 {
@@ -11,7 +12,11 @@ private:
     QTcpSocket* m_socket;
     QTextEdit* m_messages;
     QLineEdit* m_message;
+    QLabel* m_name;
     quint16 m_nextBlockSize;
+
+    QString m_host;
+    int m_port;
 
 public:
     ChatClient(const QString& host = "localhost", int port = 2323, QWidget *parent = nullptr);
@@ -21,5 +26,6 @@ public slots:
     void socketConnected();
     void socketDisconnected();
     void socketError(QAbstractSocket::SocketError error);
-    void sendToServer();
+    void sendMessage();
+    void connectToServer();
 };

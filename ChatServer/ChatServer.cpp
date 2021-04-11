@@ -37,11 +37,44 @@ void ChatServer::deleteSocket()
 void ChatServer::readClient()
 {
     QTcpSocket* clientSocket = (QTcpSocket*)sender();
-    QByteArray data = clientSocket->readAll();
-    sendToClients(data);
+    QDataStream in(clientSocket);
+    in.setVersion(QDataStream::Qt_6_0);
+
+    if(m_nextBlockSize == 0)
+    {
+        if(clientSocket->bytesAvailable() < sizeof(quint16))
+            return;
+        in >> m_nextBlockSize;
+    }
+
+    if(clientSocket->bytesAvailable() < m_nextBlockSize)
+        return;
+
+    quint8 command;
+    in >> command;
+
+    switch (command)
+    {
+    case message:
+    {
+        QByteArray data;
+        QDataStream out(&data, QIODevice::WriteOnly);
+        out.setVersion(QDataStream::Qt_6_0);
+        QTime time;
+        QString name, msg;
+        in >> time >> name >> msg;
+        out << quint16(0) << quint8(message) << time << name << msg;
+
+        out.device()->seek(0);
+        out << quint16(data.size() - sizeof(quint16));
+        sendToAllClients(data);
+        break;
+    }
+    }
+    m_nextBlockSize = 0;
 }
 
-void ChatServer::sendToClients(QByteArray data)
+void ChatServer::sendToAllClients(QByteArray data)
 {
     foreach(QTcpSocket* client, m_clients)
         client->write(data);

@@ -1,6 +1,8 @@
 #pragma once
+#include <QTime>
 #include <QTcpServer>
 #include <QTcpSocket>
+#include "../Chat/ChatClient/Commands.h"
 
 class ChatServer : public QTcpServer
 {
@@ -9,7 +11,7 @@ private:
     QList<QTcpSocket*> m_clients;
     quint16 m_nextBlockSize;
 
-    void sendToClients(QByteArray data);
+    void sendToAllClients(QByteArray data);
 
 public:
     ChatServer();
