@@ -5,7 +5,7 @@
 #include <QTcpServer>
 #include <QTcpSocket>
 #include "Client.h"
-#include "../Chat/ChatClient/Commands.h"
+#include "Commands.h"
 
 class ChatServer : public QWidget
 {

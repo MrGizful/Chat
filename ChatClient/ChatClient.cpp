@@ -1,5 +1,6 @@
 #include "ChatClient.h"
 
+//Define interaction elements and create layout
 ChatClient::ChatClient(const QString& host, int port, QWidget *parent)
     : QWidget(parent), m_socket(nullptr), m_nextBlockSize(0)
 {
@@ -70,6 +71,7 @@ void ChatClient::socketReadReady()
     QDataStream in(m_socket);
     in.setVersion(QDataStream::Qt_6_0);
 
+    //Checking message integrity
     if(m_nextBlockSize == 0)
     {
         if(m_socket->bytesAvailable() < sizeof(quint16))
@@ -80,9 +82,11 @@ void ChatClient::socketReadReady()
     if(m_socket->bytesAvailable() < m_nextBlockSize)
         return;
 
+    //Define the command
     quint8 command;
     in >> command;
 
+    //Execute command
     switch (command)
     {
     case message:
@@ -100,6 +104,7 @@ void ChatClient::socketReadReady()
     m_nextBlockSize = 0;
 }
 
+//Display messages from other clients
 void ChatClient::showMessage()
 {
     QDataStream in(m_socket);
@@ -113,6 +118,7 @@ void ChatClient::showMessage()
     m_messages->append(time.toString() + " <" + name + "> " + msg);
 }
 
+//Display messages from server
 void ChatClient::showServerMessage()
 {
     QDataStream in(m_socket);
@@ -125,6 +131,7 @@ void ChatClient::showServerMessage()
     m_messages->append(time.toString() + " " + msg);
 }
 
+//Send a message to chat
 void ChatClient::sendMessage()
 {
     if((m_message->text().remove(' ') != "") && !m_message->text().isEmpty() && m_socket->state() == QAbstractSocket::ConnectedState)
@@ -142,6 +149,7 @@ void ChatClient::sendMessage()
     }
 }
 
+//Send autorized information to server
 void ChatClient::sendClientInfo()
 {
     QByteArray data;
@@ -155,6 +163,7 @@ void ChatClient::sendClientInfo()
     m_socket->write(data);
 }
 
+//Display connection errors
 void ChatClient::socketError(QAbstractSocket::SocketError error)
 {
     QString strError = " Error: " + (error == QAbstractSocket::HostNotFoundError ? "The host not found." :

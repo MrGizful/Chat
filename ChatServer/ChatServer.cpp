@@ -1,5 +1,6 @@
 #include "ChatServer.h"
 
+//Define interaction elements and create layout
 ChatServer::ChatServer(QWidget* parent) : QWidget(parent), m_nextBlockSize(0)
 {
     m_server = new QTcpServer;
@@ -37,6 +38,7 @@ void ChatServer::startServer()
         m_console->append(QTime::currentTime().toString() + " Unable to start the server: " + m_server->errorString());
 }
 
+//Register new connection
 void ChatServer::slotNewConnection()
 {
     QTcpSocket* clientSocket = m_server->nextPendingConnection();
@@ -47,6 +49,8 @@ void ChatServer::slotNewConnection()
     connect(clientSocket, SIGNAL(readyRead()), this, SLOT(readClient()));
 }
 
+//Find and delete disconnected client
+//Send notification to server and other clients
 void ChatServer::deleteSocket()
 {
     QTcpSocket* snd = (QTcpSocket*)sender();
@@ -66,10 +70,12 @@ void ChatServer::deleteSocket()
 
 void ChatServer::readClient()
 {
+    //Spot the sender
     QTcpSocket* clientSocket = (QTcpSocket*)sender();
     QDataStream in(clientSocket);
     in.setVersion(QDataStream::Qt_6_0);
 
+    //Checking message integrity
     if(m_nextBlockSize == 0)
     {
         if(clientSocket->bytesAvailable() < sizeof(quint16))
@@ -80,9 +86,11 @@ void ChatServer::readClient()
     if(clientSocket->bytesAvailable() < m_nextBlockSize)
         return;
 
+    //Define the command
     quint8 command;
     in >> command;
 
+    //Execute command
     switch (command)
     {
     case message:
@@ -99,6 +107,7 @@ void ChatServer::readClient()
     m_nextBlockSize = 0;
 }
 
+//Send client message to all clients
 void ChatServer::sendMessage(QTcpSocket* sender)
 {
     QByteArray data;
@@ -125,15 +134,18 @@ void ChatServer::authClient(QTcpSocket *client)
     QString name;
     in >> name;
 
+    //Checking for the existing a client
     m_mutex.lock();
     foreach(Client* authClient, m_clients)
         if(authClient->name() == name)
         {
+            //Client exists
             authFailed(client);
             m_mutex.unlock();
             return;
         }
 
+    //Client not exists
     for(int i = m_clients.size() - 1; i >= 0; i--)
         if(m_clients.at(i)->socket() == client)
             m_clients.at(i)->setName(name);
@@ -144,11 +156,14 @@ void ChatServer::authClient(QTcpSocket *client)
 
 void ChatServer::authFailed(QTcpSocket *client)
 {
+    //Messaging the client about failed authentication
     sendServerMessage("Authentication failed", client);
 
+    //Delete client
     for(int i = m_clients.size() - 1; i >= 0; i--)
         if(m_clients.at(i)->socket() == client)
             m_clients.removeAt(i);
+    //Console message about failed authentication
     m_console->append(QTime::currentTime().toString() + " " +
                       QString::number(client->socketDescriptor()) + ": authentication failed");
 
@@ -157,17 +172,20 @@ void ChatServer::authFailed(QTcpSocket *client)
 
 void ChatServer::authSuccess(QTcpSocket* client)
 {
+    //Spot the client
     QString name;
     for(int i = m_clients.size() - 1; i >= 0; i--)
         if(m_clients.at(i)->socket() == client)
             name = m_clients.at(i)->name();
 
+    //Send messages that client connected
     sendServerMessage(name + " joined to the chat");
 
     m_console->append(QTime::currentTime().toString() + " " + name +
                       "(" + QString::number(client->socketDescriptor()) + ") " + " successfully connected");
 }
 
+//Send server messages from server to client/clients
 void ChatServer::sendServerMessage(QString message, QTcpSocket *client)
 {
     QByteArray data;
@@ -188,11 +206,13 @@ void ChatServer::sendServerMessage(QString message, QTcpSocket *client)
     sendToAllClients(data);
 }
 
+//Send message to client
 void ChatServer::sendToClient(QByteArray data, QTcpSocket *client)
 {
     client->write(data);
 }
 
+//Send message to all clients
 void ChatServer::sendToAllClients(QByteArray data)
 {
     foreach(Client* client, m_clients)
@@ -204,6 +224,7 @@ void ChatServer::stopServer()
     this->close();
 }
 
+//Defining and executing server commands
 void ChatServer::serverCommand()
 {
     QString consoleCmd = m_command->text();

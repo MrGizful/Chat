@@ -18,4 +18,5 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 HEADERS += \
     ChatServer.h \
-    Client.h
+    Client.h \
+    Commands.h
