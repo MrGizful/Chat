@@ -1,8 +1,6 @@
-QT -= gui
-QT += core network
+QT       += core gui network
 
-CONFIG += c++11 console
-CONFIG -= app_bundle
+greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.

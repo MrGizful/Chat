@@ -1,26 +1,50 @@
 #include "ChatServer.h"
 
-ChatServer::ChatServer() : m_nextBlockSize(0)
+ChatServer::ChatServer(QWidget* parent) : QWidget(parent), m_nextBlockSize(0)
 {
+    m_server = new QTcpServer;
+    m_console = new QTextEdit;
+    m_command = new QLineEdit;
+
+    m_console->setReadOnly(true);
+
+    QLabel* commandLbl = new QLabel("Command");
+
+    QHBoxLayout* hLayout = new QHBoxLayout;
+    hLayout->addWidget(commandLbl);
+    hLayout->addWidget(m_command, 3);
+    QVBoxLayout* vLayout = new QVBoxLayout;
+    vLayout->addWidget(m_console, 4);
+    vLayout->addLayout(hLayout);
+    setLayout(vLayout);
+
+    setMinimumSize(350, 250);
+    connect(m_server, SIGNAL(newConnection()), this, SLOT(slotNewConnection()));
+    connect(m_command, SIGNAL(returnPressed()), this, SLOT(serverCommand()));
 }
 
 void ChatServer::startServer()
 {
-    if(listen(QHostAddress::Any, 2323))
-        qDebug() << "Server started!";
+    if(m_server->isListening())
+    {
+        m_console->append(QTime::currentTime().toString() + " Can't start server: It's already started");
+        return;
+    }
+
+    if(m_server->listen(QHostAddress::Any, 2323))
+        m_console->append(QTime::currentTime().toString() + " Server started!");
     else
-        qDebug() << "Unable to start the server: " + errorString();
+        m_console->append(QTime::currentTime().toString() + " Unable to start the server: " + m_server->errorString());
 }
 
-void ChatServer::incomingConnection(qintptr socketDescriptor)
+void ChatServer::slotNewConnection()
 {
-    QTcpSocket* socket = new QTcpSocket(this);
-    socket->setSocketDescriptor(socketDescriptor);
-    Client* client = new Client(socket, this);
+    QTcpSocket* clientSocket = m_server->nextPendingConnection();
+    Client* client = new Client(clientSocket, this);
     m_clients.append(client);
 
-    connect(socket, SIGNAL(readyRead()), this, SLOT(readClient()));
-    connect(socket, SIGNAL(disconnected()), this , SLOT(deleteSocket()));
+    connect(clientSocket, SIGNAL(disconnected()), this, SLOT(deleteSocket()));
+    connect(clientSocket, SIGNAL(readyRead()), this, SLOT(readClient()));
 }
 
 void ChatServer::deleteSocket()
@@ -32,7 +56,7 @@ void ChatServer::deleteSocket()
         if(m_clients.at(i)->socket() == snd)
         {
             sendServerMessage(m_clients.at(i)->name() + " leave the chat");
-            qDebug() << m_clients.at(i)->name() + " disconnected";
+            m_console->append(QTime::currentTime().toString() + " " + m_clients.at(i)->name() + " disconnected");
             m_clients.removeAt(i);
         }
     m_mutex.unlock();
@@ -125,7 +149,8 @@ void ChatServer::authFailed(QTcpSocket *client)
     for(int i = m_clients.size() - 1; i >= 0; i--)
         if(m_clients.at(i)->socket() == client)
             m_clients.removeAt(i);
-    qDebug() << client << ": authentication failed";
+    m_console->append(QTime::currentTime().toString() + " " +
+                      QString::number(client->socketDescriptor()) + ": authentication failed");
 
     client->disconnectFromHost();
 }
@@ -139,7 +164,8 @@ void ChatServer::authSuccess(QTcpSocket* client)
 
     sendServerMessage(name + " joined to the chat");
 
-    qDebug() << name + " successfully connected";
+    m_console->append(QTime::currentTime().toString() + " " + name +
+                      "(" + QString::number(client->socketDescriptor()) + ") " + " successfully connected");
 }
 
 void ChatServer::sendServerMessage(QString message, QTcpSocket *client)
@@ -171,4 +197,23 @@ void ChatServer::sendToAllClients(QByteArray data)
 {
     foreach(Client* client, m_clients)
         client->socket()->write(data);
+}
+
+void ChatServer::stopServer()
+{
+    this->close();
+}
+
+void ChatServer::serverCommand()
+{
+    QString consoleCmd = m_command->text();
+    if(consoleCmd.isNull() || (consoleCmd.remove(' ') == ""))
+        return;
+
+    if(consoleCmd == "stop")
+        stopServer();
+    if(consoleCmd == "start")
+        startServer();
+
+    m_command->setText("");
 }
