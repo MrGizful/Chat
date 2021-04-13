@@ -1,6 +1,5 @@
 #pragma once
 #include <QtWidgets>
-#include <QMutex>
 #include <QTcpSocket>
 #include "StartDialog.h"
 #include "Commands.h"
@@ -10,7 +9,6 @@ class ChatClient : public QWidget
     Q_OBJECT
 
 private:
-    QMutex m_mutex;
     QTcpSocket* m_socket;
     QTextEdit* m_messages;
     QLineEdit* m_message;
