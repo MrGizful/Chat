@@ -1,7 +1,7 @@
 #include "ChatClient.h"
 
 ChatClient::ChatClient(const QString& host, int port, QWidget *parent)
-    : QWidget(parent), m_nextBlockSize(0)
+    : QWidget(parent), m_socket(nullptr), m_nextBlockSize(0)
 {
     m_host = host;
     m_port = port;
@@ -32,7 +32,7 @@ ChatClient::ChatClient(const QString& host, int port, QWidget *parent)
 
 void ChatClient::connectToServer()
 {
-    if(m_socket->state() == QTcpSocket::ConnectedState)
+    if(m_socket && (m_socket->state() == QTcpSocket::ConnectedState))
         return;
 
     StartDialog* startDialog = new StartDialog;
@@ -42,12 +42,14 @@ void ChatClient::connectToServer()
         m_socket->connectToHost(m_host, m_port);
         m_name->setText(startDialog->name());
 
+
         connect(m_socket, SIGNAL(readyRead()), this, SLOT(socketReadReady()));
         connect(m_socket, SIGNAL(connected()), this, SLOT(socketConnected()));
         connect(m_socket, SIGNAL(disconnected()), this, SLOT(socketDisconnected()));
         connect(m_socket, SIGNAL(errorOccurred(QAbstractSocket::SocketError)), this, SLOT(socketError(QAbstractSocket::SocketError)));
 
-        sendClientInfo();
+        if(m_socket->waitForConnected(1000))
+            sendClientInfo();
     }
     delete startDialog;
 }
@@ -153,7 +155,14 @@ void ChatClient::sendClientInfo()
     m_socket->write(data);
 }
 
-void ChatClient::socketError(QAbstractSocket::SocketError)
+void ChatClient::socketError(QAbstractSocket::SocketError error)
 {
-    QString strError = "Error: " + m_socket->errorString();
+    QString strError = " Error: " + (error == QAbstractSocket::HostNotFoundError ? "The host not found." :
+                                    error == QAbstractSocket::RemoteHostClosedError ? "The remote host is closed" :
+                                    error == QAbstractSocket::ConnectionRefusedError ? "The connection was refused" :
+                                    QString(m_socket->errorString()));
+    m_messages->append(QTime::currentTime().toString() + strError);
+
+    m_socket->deleteLater();
+    m_socket = nullptr;
 }
