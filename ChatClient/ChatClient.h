@@ -18,6 +18,10 @@ private:
     QString m_host;
     int m_port;
 
+    void showMessage();
+    void showServerMessage();
+    void sendClientInfo();
+
 public:
     ChatClient(const QString& host = "localhost", int port = 2323, QWidget *parent = nullptr);
 

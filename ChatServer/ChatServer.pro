@@ -10,6 +10,7 @@ CONFIG -= app_bundle
 
 SOURCES += \
         ChatServer.cpp \
+        Client.cpp \
         main.cpp
 
 # Default rules for deployment.
@@ -18,4 +19,5 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 HEADERS += \
-    ChatServer.h
+    ChatServer.h \
+    Client.h

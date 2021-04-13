@@ -2,5 +2,7 @@
 
 enum Command
 {
-    message = 0
+    message = 0,
+    serverMessage,
+    clientInfo
 };

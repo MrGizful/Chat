@@ -46,14 +46,16 @@ void ChatClient::connectToServer()
         connect(m_socket, SIGNAL(connected()), this, SLOT(socketConnected()));
         connect(m_socket, SIGNAL(disconnected()), this, SLOT(socketDisconnected()));
         connect(m_socket, SIGNAL(errorOccurred(QAbstractSocket::SocketError)), this, SLOT(socketError(QAbstractSocket::SocketError)));
+
+        sendClientInfo();
     }
     delete startDialog;
 }
 
 void ChatClient::socketConnected()
 {
-    QTime time;
-    m_messages->append(time.currentTime().toString() + " Connected to the chat");
+//    QTime time;
+//    m_messages->append(time.currentTime().toString() + " Connected to the chat");
 }
 
 void ChatClient::socketDisconnected()
@@ -63,42 +65,62 @@ void ChatClient::socketDisconnected()
 
 void ChatClient::socketReadReady()
 {
-    if(m_socket->waitForConnected(500))
+    QDataStream in(m_socket);
+    in.setVersion(QDataStream::Qt_6_0);
+
+    if(m_nextBlockSize == 0)
     {
-        m_socket->waitForReadyRead(500);
-
-        QDataStream in(m_socket);
-        in.setVersion(QDataStream::Qt_6_0);
-
-        if(m_nextBlockSize == 0)
-        {
-            if(m_socket->bytesAvailable() < sizeof(quint16))
-                return;
-            in >> m_nextBlockSize;
-        }
-
-        if(m_socket->bytesAvailable() < m_nextBlockSize)
+        if(m_socket->bytesAvailable() < sizeof(quint16))
             return;
-
-        quint8 command;
-        in >> command;
-
-        switch (command)
-        {
-        case message:
-        {
-            QTime time;
-            QString msg;
-            QString name;
-            in >> time >> name >> msg;
-
-            m_messages->append(time.toString() + " <" + name + "> " + msg);
-            break;
-        }
-        }
-
-        m_nextBlockSize = 0;
+        in >> m_nextBlockSize;
     }
+
+    if(m_socket->bytesAvailable() < m_nextBlockSize)
+        return;
+
+    quint8 command;
+    in >> command;
+
+    switch (command)
+    {
+    case message:
+    {
+        showMessage();
+        break;
+    }
+    case serverMessage:
+    {
+        showServerMessage();
+        break;
+    }
+    }
+
+    m_nextBlockSize = 0;
+}
+
+void ChatClient::showMessage()
+{
+    QDataStream in(m_socket);
+    in.setVersion(QDataStream::Qt_6_0);
+
+    QTime time;
+    QString msg;
+    QString name;
+    in >> time >> name >> msg;
+
+    m_messages->append(time.toString() + " <" + name + "> " + msg);
+}
+
+void ChatClient::showServerMessage()
+{
+    QDataStream in(m_socket);
+    in.setVersion(QDataStream::Qt_6_0);
+
+    QTime time;
+    QString msg;
+    in >> time >> msg;
+
+    m_messages->append(time.toString() + " " + msg);
 }
 
 void ChatClient::sendMessage()
@@ -116,6 +138,19 @@ void ChatClient::sendMessage()
         m_socket->write(data);
         m_message->setText("");
     }
+}
+
+void ChatClient::sendClientInfo()
+{
+    QByteArray data;
+    QDataStream out(&data, QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_6_0);
+    out << quint16(0) << quint8(clientInfo) << m_name->text();
+
+    out.device()->seek(0);
+    out << quint16(data.size() - sizeof(quint16));
+
+    m_socket->write(data);
 }
 
 void ChatClient::socketError(QAbstractSocket::SocketError)
